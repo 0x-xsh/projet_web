@@ -13,6 +13,26 @@ class Post(models.Model):
 
     def __str__(self):
         return self.title
+    
+    @property
+    def like_count(self):
+        return self.likes.count()
+    
+    @property
+    def liked_by(self):
+        return [like.user.id for like in self.likes.all()]
+
+class Like(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='likes')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username} likes {self.post.title}'
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')

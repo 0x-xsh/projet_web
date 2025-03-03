@@ -1,9 +1,11 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Post, Comment
-from .serializers import PostSerializer, CommentSerializer
+from .models import Post, Comment, Like
+from .serializers import PostSerializer, CommentSerializer, LikeSerializer
 from .authentication import JWTAuthentication
+from django.db import IntegrityError
+from django.shortcuts import get_object_or_404
 
 class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
@@ -12,7 +14,14 @@ class PostViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Users can see all posts but can only modify their own
-        return Post.objects.all()
+        queryset = Post.objects.all()
+        
+        # Filter by author if specified
+        author = self.request.query_params.get('author')
+        if author:
+            queryset = queryset.filter(author=author)
+            
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -28,6 +37,45 @@ class PostViewSet(viewsets.ModelViewSet):
         if instance.author != request.user:
             return Response({"detail": "You can only delete your own posts"}, status=403)
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def like(self, request, pk=None):
+        post = self.get_object()
+        user = request.user
+        
+        try:
+            # Try to create a like
+            like = Like.objects.create(user=user, post=post)
+            serializer = LikeSerializer(like)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            # User already liked the post
+            return Response(
+                {"detail": "You have already liked this post"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['post'])
+    def unlike(self, request, pk=None):
+        post = self.get_object()
+        user = request.user
+        
+        try:
+            like = Like.objects.get(user=user, post=post)
+            like.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Like.DoesNotExist:
+            return Response(
+                {"detail": "You haven't liked this post"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['get'])
+    def likes(self, request, pk=None):
+        post = self.get_object()
+        likes = post.likes.all()
+        serializer = LikeSerializer(likes, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):

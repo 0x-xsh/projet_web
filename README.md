@@ -1,121 +1,66 @@
-# Microservices on Kubernetes with Nginx API Gateway
+# Social Media Application
 
-This project contains a microservices architecture running on Kubernetes with an Nginx-based API Gateway. It consists of three main services:
+This is a simple social media application built with a microservices architecture:
+- Frontend: Next.js with Tailwind CSS
+- Backend: Multiple Django services (auth, users, posts)
+- Database: PostgreSQL
 
-- **Auth Service**: Handles authentication and authorization
-- **Users Service**: Manages user data and profiles
-- **Posts Service**: Manages posts and content
+## Getting Started
 
-## API Gateway Architecture
+### Prerequisites
 
-The system uses the Nginx Ingress Controller as an API Gateway with the following features:
-- **Path-based routing**: Routes requests to appropriate microservices
-- **Cross-Origin Resource Sharing (CORS)**: Configured to allow cross-origin requests
-- **Rate limiting**: Protects the API from abuse
-- **Request/response transformation**: URL rewriting for clean API paths
-- **Security headers**: Additional HTTP security headers on all responses
+- Docker and Docker Compose
 
-## Prerequisites
-
-- Docker
-- Minikube (for local Kubernetes)
-- kubectl
-- Helm (optional)
-
-## Setup
+### Setup
 
 1. Clone this repository
-2. Run the setup script:
 
+2. Run the setup script to run migrations:
 ```bash
-chmod +x k8s-setup.sh
-./k8s-setup.sh
+./setup.sh
 ```
 
-This script will:
-- Install Minikube if not already installed
-- Set up a local Kubernetes cluster
-- Enable and configure the Nginx Ingress Controller as an API Gateway
-- Build Docker images for all services
-- Deploy all services to Kubernetes
-- Apply advanced API Gateway configurations
-
-## API Endpoints
-
-All endpoints are accessible through the API Gateway at the Minikube IP address:
-
-- **Auth Service**: `/auth/...`
-  - `/auth/register/` - Register a new user
-  - `/auth/token/` - Get authentication token
-
-- **Users Service**: `/users/...`
-  - `/users/` - List and create users
-  - `/users/:id/` - Get, update or delete a user
-
-- **Posts Service**: `/posts/...`
-  - `/posts/` - List and create posts
-  - `/posts/:id/` - Get, update or delete a post
-
-## Testing the API Gateway
-
-A script is provided to test the API Gateway functionality:
-
+3. Start all services:
 ```bash
-chmod +x test-api-gateway.sh
-./test-api-gateway.sh
+docker-compose up
 ```
 
-## Additional API Gateway Features
+4. Access the application:
+   - Frontend: http://localhost:3000
+   - Auth Service: http://localhost:9000
+   - Posts Service: http://localhost:9001
+   - Users Service: http://localhost:9002
 
-The API Gateway provides several features to enhance your microservices:
+## Services
 
-1. **Rate Limiting**: Prevents abuse by limiting requests from a single client
-2. **CORS Support**: Allows web applications from other domains to access your API
-3. **Security Headers**: Adds security-related HTTP headers to all responses
-4. **Path Rewriting**: Creates clean API endpoints without exposing service details
-5. **Timeout Configuration**: Custom timeout settings for handling long-running operations
+### Frontend
+- Next.js with Tailwind CSS
+- Runs on port 3000
 
-## Accessing the Services
+### Auth Service
+- Django application for authentication
+- Runs on port 9000
 
-After running the setup script, you can access the services through the API Gateway:
+### Users Service
+- Django application for user management
+- Runs on port 9002
 
-```bash
-# Get the Minikube IP
-minikube ip
-```
+### Posts Service
+- Django application for posts management
+- Runs on port 9001
 
-Then access the services at:
-- `http://<minikube-ip>/auth/`
-- `http://<minikube-ip>/users/`
-- `http://<minikube-ip>/posts/`
+### Database
+- PostgreSQL
+- Port 5435 (exposed) / 5432 (internal)
 
-## Monitoring
+## Development
 
-To view logs:
+To make changes to the frontend:
+1. Navigate to the frontend directory
+2. Make your changes
+3. The changes will be automatically reloaded thanks to Next.js dev server
 
-```bash
-# Nginx Ingress Controller logs
-kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
-
-# Service logs
-kubectl logs deployment/auth-service
-kubectl logs deployment/users-service
-kubectl logs deployment/posts-service
-```
-
-## Troubleshooting
-
-If you encounter issues:
-
-1. Check pod status: `kubectl get pods`
-2. Check ingress status: `kubectl get ingress`
-3. Check Nginx Ingress Controller: `kubectl get pods -n ingress-nginx`
-4. View Nginx configuration: `kubectl exec -it -n ingress-nginx $(kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller -o jsonpath='{.items[0].metadata.name}') -- cat /etc/nginx/nginx.conf`
-
-## Cleanup
-
-To delete the Kubernetes cluster:
-
-```bash
-minikube delete
-``` 
+To make changes to any of the backend services:
+1. Navigate to the respective service directory
+2. Make your changes
+3. The changes will be automatically reloaded thanks to Django's development server

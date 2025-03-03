@@ -13,4 +13,14 @@ class UserSerializer(serializers.ModelSerializer):
             email=validated_data.get('email', ''),
             password=validated_data['password']
         )
-        return user 
+        return user
+
+class PublicUserSerializer(serializers.ModelSerializer):
+    """
+    A limited serializer for public user data, exposing only the ID and username.
+    Used when returning user data to non-authenticated requests or other users.
+    """
+    class Meta:
+        model = User
+        fields = ('id', 'username')
+        read_only_fields = fields 

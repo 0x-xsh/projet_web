@@ -33,6 +33,7 @@ media
 
 # Kubernetes
 *.log
+kubectl
 
 # Visual Studio Code
 .vscode/

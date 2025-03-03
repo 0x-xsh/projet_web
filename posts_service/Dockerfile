@@ -15,4 +15,5 @@ COPY . .
 
 EXPOSE 9001 
 
-CMD ["gunicorn", "--bind", "0.0.0.0:9001", "core.wsgi:application"] 
+# Run migrations and start the server directly
+CMD bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:9001" 

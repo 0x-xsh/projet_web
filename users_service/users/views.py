@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError
-from .serializers import UserSerializer
+from .serializers import UserSerializer, PublicUserSerializer
 from .authentication import JWTAuthentication
 from django.contrib.auth.models import User
 
@@ -30,9 +30,21 @@ def verify_token(request):
         })
     except TokenError:
         return Response({'detail': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
-    except Exception as e:
-        return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    except Exception:
+        return Response({'detail': 'Authentication failed'}, status=status.HTTP_401_UNAUTHORIZED)
 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Anyone can fetch basic user info
+def get_user_by_id(request, user_id):
+    try:
+        user = get_object_or_404(User, id=user_id)
+        serializer = PublicUserSerializer(user)
+        return Response(serializer.data)
+    except User.DoesNotExist:
+        return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception:
+        return Response({'detail': 'Error retrieving user'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):

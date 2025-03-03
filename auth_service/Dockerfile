@@ -12,4 +12,7 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000 
+EXPOSE 8000 9000
+
+# Run migrations and start the server directly
+CMD bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:9000" 

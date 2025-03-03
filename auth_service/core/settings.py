@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 import os
+import warnings
 from datetime import timedelta
 from pathlib import Path
 
@@ -22,12 +23,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'your_secret_key_here')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise Exception("SECRET_KEY environment variable is required")
+
+# JWT Secret Key - Use a separate key for JWT tokens
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
+if not JWT_SECRET_KEY:
+    warnings.warn(
+        "JWT_SECRET_KEY not found in environment variables. Using Django SECRET_KEY as fallback. "
+        "For production, it's recommended to set a separate JWT_SECRET_KEY for better security.",
+        UserWarning
+    )
+    JWT_SECRET_KEY = SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = int(os.environ.get('DEBUG', 1))
+DEBUG = bool(os.environ.get("DEBUG", default=0))
 
-ALLOWED_HOSTS = ['*']  # For development only
+ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'auth_service', 'auth_service:9000', 'auth-service', 'auth-service:9000', 'projet_web-auth_service-1', 'projet_web-auth_service-1:9000']  # Added hosts with port numbers
 
 
 # Application definition
@@ -55,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.SecurityHeadersMiddleware',  # Add custom security headers
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -152,14 +166,30 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
-    'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', 'fallback-secret-key'),
+    'SIGNING_KEY': JWT_SECRET_KEY,  # Use the dedicated variable
     'VERIFYING_KEY': None,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+]
+
+# Additional CORS settings for security
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+    'OPTIONS',
+]
+CORS_ALLOW_HEADERS = [
+    'Authorization',
+    'Content-Type',
+    'X-Requested-With',
 ]
 
 # Users service URL
