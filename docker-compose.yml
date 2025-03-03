@@ -75,28 +75,6 @@ services:
       - auth_service
       - users_service
 
-  # frontend:
-  #   build: 
-  #     context: ./frontend
-  #     args:
-  #       BUILDKIT_INLINE_CACHE: 0
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #     - /app/.next
-  #   environment:
-  #     - NODE_ENV=development
-  #     - NEXT_PUBLIC_AUTH_URL=http://localhost:9000
-  #     - NEXT_PUBLIC_POSTS_URL=http://localhost:9001
-  #     - NEXT_PUBLIC_USERS_URL=http://localhost:9002
-  #   depends_on:
-  #     - auth_service
-  #     - posts_service
-  #     - users_service
-  #   command: npm run dev
-
   db:
     image: postgres:13
     volumes:
