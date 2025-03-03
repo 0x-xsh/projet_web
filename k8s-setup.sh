@@ -17,24 +17,34 @@ fi
 
 # Check if kubectl is installed
 if ! command -v kubectl &> /dev/null; then
-    echo -e "${YELLOW}kubectl is not installed. Using existing kubectl in the project...${NC}"
-    chmod +x ./kubectl
-    sudo mv ./kubectl /usr/local/bin/
+    echo -e "${YELLOW}kubectl is not installed. Using package manager to install it...${NC}"
+    sudo apt-get update && sudo apt-get install -y kubectl
+    if [ $? -ne 0 ]; then
+        echo -e "${YELLOW}Failed to install kubectl with apt. Trying snap...${NC}"
+        sudo snap install kubectl --classic
+    fi
 fi
 
-# Start minikube
+# Start minikube with specific version to avoid issues
 echo -e "${GREEN}Starting minikube...${NC}"
-minikube start --driver=docker
+minikube start --driver=docker --kubernetes-version=v1.25.0
 
 # Enable ingress addon
-echo -e "${GREEN}Enabling ingress addon...${NC}"
+echo -e "${GREEN}Enabling and configuring Nginx Ingress Controller...${NC}"
 minikube addons enable ingress
+
+# Wait for Nginx Ingress Controller to be ready
+echo -e "${GREEN}Waiting for Nginx Ingress Controller to be ready...${NC}"
+kubectl -n ingress-nginx wait --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=180s || true
+
+# Apply the Nginx Ingress Controller advanced configuration
+echo -e "${GREEN}Applying Nginx Ingress Controller API Gateway configuration...${NC}"
+kubectl apply -f nginx-config.yaml
 
 # Install Helm if not installed
 if ! command -v helm &> /dev/null; then
     echo -e "${YELLOW}Helm is not installed. Installing Helm...${NC}"
-    chmod +x ./get_helm.sh
-    ./get_helm.sh
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 fi
 
 # Build Docker images for services
@@ -50,7 +60,6 @@ kubectl apply -f db.yaml
 kubectl apply -f auth.yaml
 kubectl apply -f users.yaml
 kubectl apply -f posts.yaml
-kubectl apply -f ingress.yaml
 
 # Wait for services to be ready
 echo -e "${GREEN}Waiting for services to be ready...${NC}"
@@ -59,9 +68,23 @@ kubectl wait --for=condition=available --timeout=300s deployment/users-service
 kubectl wait --for=condition=available --timeout=300s deployment/posts-service
 kubectl wait --for=condition=available --timeout=300s deployment/db
 
-# Get the ingress IP
-echo -e "${GREEN}Getting the ingress URL...${NC}"
+# Apply the Ingress configuration last to make sure all services are ready
+echo -e "${GREEN}Applying Ingress API Gateway configuration...${NC}"
+kubectl apply -f ingress.yaml
+
+# Restart the Nginx Ingress Controller to apply the config
+echo -e "${GREEN}Restarting Nginx Ingress Controller to apply configuration...${NC}"
+kubectl -n ingress-nginx rollout restart deployment ingress-nginx-controller
+
+# Get the ingress IP and display access information
+echo -e "${GREEN}Getting the Nginx Ingress Controller information...${NC}"
 minikube service list
 
-echo -e "${GREEN}To access the services, run: ${YELLOW}minikube service api-gateway${NC}"
-echo -e "${GREEN}Kubernetes setup complete!${NC}" 
+# Get ingress address
+INGRESS_HOST=$(minikube ip)
+echo -e "${GREEN}Your API Gateway endpoints:${NC}"
+echo -e "${YELLOW}Authentication Service: http://$INGRESS_HOST/auth/${NC}"
+echo -e "${YELLOW}Users Service: http://$INGRESS_HOST/users/${NC}"
+echo -e "${YELLOW}Posts Service: http://$INGRESS_HOST/posts/${NC}"
+
+echo -e "${GREEN}Kubernetes setup with Nginx Ingress API Gateway complete!${NC}" 
