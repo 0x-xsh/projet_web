@@ -55,7 +55,7 @@ const ExpandButton = styled((props) => {
   }),
 }));
 
-const PostItem = ({ post, showAuthor = true, forceAuthor = false }) => {
+const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted }) => {
   const { currentUser } = useAuth();
   
   // Simple direct check - compare IDs directly
@@ -71,6 +71,7 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false }) => {
   const [authorLoading, setAuthorLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [commentError, setCommentError] = useState('');
+  const [error, setError] = useState('');
   
   // Determine if current user is the author immediately - more direct comparison
   // This adds a more explicit check based on IDs only
@@ -79,61 +80,28 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false }) => {
   const isAuthorByIds = currentUserId && postAuthorId && 
                        (currentUserId.toString() === postAuthorId.toString());
 
-  // Log post information only once when component mounts or when key information changes
-  useEffect(() => {
-    console.log(`POST: "${post.title}" - ID: ${post.id}, Author: ${post.author} - CAN ${canDelete ? 'BE DELETED ✓' : 'NOT BE DELETED ✗'}`);
-    
-    // More detailed debug info
-    console.log(`Post #${post.id} authorship check:`, { 
-      postAuthor: post.author,
-      currentUser: currentUser?.id,
-      isAuthor: isAuthorByIds || forceAuthor
-    });
-  }, [post.id, post.title, post.author, canDelete, currentUser?.id, isAuthorByIds, forceAuthor]);
-
   // Fetch author data if needed
   useEffect(() => {
     const fetchAuthorData = async () => {
-      // If author is an object with username, use that
-      if (typeof post.author === 'object' && post.author !== null && post.author.username) {
-        setAuthorData(post.author);
-        return;
-      }
-      
-      // If author is a number or string ID, fetch the user data
-      if (typeof post.author === 'number' || !isNaN(parseInt(post.author))) {
+      try {
+        const response = await UserService.getUserById(post.author);
+        setAuthorData(response.data);
+      } catch (err) {
+        // Try one more time after a short delay
         try {
-          setAuthorLoading(true);
-          const userId = typeof post.author === 'number' ? post.author : parseInt(post.author);
-          const response = await UserService.getUserById(userId);
-          setAuthorData(response.data);
-        } catch (err) {
-          console.error('Error fetching author data:', err);
-          // Try again after a brief delay instead of using a placeholder
-          setTimeout(async () => {
-            try {
-              const userId = typeof post.author === 'number' ? post.author : parseInt(post.author);
-              const response = await UserService.getUserById(userId);
-              setAuthorData(response.data);
-            } catch (retryErr) {
-              console.error('Retry error fetching author data:', retryErr);
-              // If retry still fails, set a minimal author object with "Unknown" username
-              setAuthorData({ username: 'Unknown' });
-            } finally {
-              setAuthorLoading(false);
-            }
-          }, 1000);
-          return; // Return early since we're handling loading state in the retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const retryResponse = await UserService.getUserById(post.author);
+          setAuthorData(retryResponse.data);
+        } catch (retryErr) {
+          setAuthorData(null);
         }
-        setAuthorLoading(false);
-      } else {
-        // If author is a string but not a number, assume it's the username
-        setAuthorData({ username: post.author });
       }
     };
 
-    fetchAuthorData();
-  }, [post.author]);
+    if (showAuthor && !forceAuthor) {
+      fetchAuthorData();
+    }
+  }, [post.author, showAuthor, forceAuthor]);
 
   // After the useEffect for author data
   // If forceAuthor is true (in Profile page), or direct ID comparison matches,
@@ -173,31 +141,23 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false }) => {
   const handleLike = async () => {
     try {
       if (liked) {
-        // User is unliking the post
         await PostService.unlikePost(post.id);
-        setLiked(false);
-        setLikeCount(prev => prev - 1);
       } else {
-        // User is liking the post
         await PostService.likePost(post.id);
-        setLiked(true);
-        setLikeCount(prev => prev + 1);
       }
+      setLiked(!liked);
+      setLikeCount(liked ? likeCount - 1 : likeCount + 1);
     } catch (error) {
-      console.error('Error toggling like:', error);
+      setCommentError('Failed to update like status');
     }
   };
 
   const fetchComments = async () => {
     try {
-      setLoadingComments(true);
       const response = await PostService.getPostComments(post.id);
       setComments(response.data);
     } catch (err) {
-      console.error('Error fetching comments:', err);
-      // Handle error state
-    } finally {
-      setLoadingComments(false);
+      setError('Failed to load comments');
     }
   };
 
@@ -207,38 +167,31 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false }) => {
 
     setCommentError(''); // Clear previous errors
     try {
-      const response = await PostService.addComment(post.id, { content: comment });
-      setComments([...comments, response.data]);
+      await PostService.addComment(post.id, { content: comment });
       setComment('');
+      await fetchComments();
     } catch (err) {
-      console.error('Error adding comment:', err);
-      // Display user-friendly error
-      if (err.response?.status === 405) {
-        setCommentError('Comments functionality is not available at this time');
-      } else {
-        setCommentError('Failed to add comment. Please try again.');
-      }
+      setError('Failed to add comment');
     }
   };
 
   const handleDeleteComment = async (commentId) => {
     try {
       await PostService.deleteComment(post.id, commentId);
-      setComments(comments.filter(comment => comment.id !== commentId));
+      await fetchComments();
     } catch (err) {
-      console.error('Error deleting comment:', err);
-      // Handle error state
+      setError('Failed to delete comment');
     }
   };
 
   const handleDeletePost = async () => {
     try {
       await PostService.deletePost(post.id);
-      // You might want to refresh the posts list or redirect
-      window.location.reload();
+      if (onPostDeleted) {
+        onPostDeleted(post.id);
+      }
     } catch (err) {
-      console.error('Error deleting post:', err);
-      alert('Failed to delete post. Please try again.');
+      setError('Failed to delete post');
     }
   };
   

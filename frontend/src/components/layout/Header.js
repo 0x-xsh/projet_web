@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -14,11 +14,14 @@ import {
   Tooltip,
   Fade,
   useScrollTrigger,
+  Tab,
+  Tabs
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import HomeIcon from '@mui/icons-material/Home';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Scroll behavior for header
@@ -45,6 +48,7 @@ function ElevationScroll(props) {
 const Header = (props) => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleMenu = (event) => {
@@ -64,6 +68,10 @@ const Header = (props) => {
   const handleProfile = () => {
     handleClose();
     navigate('/profile');
+  };
+
+  const handleHome = () => {
+    navigate('/');
   };
 
   return (

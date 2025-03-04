@@ -42,7 +42,6 @@ const QuickPostForm = ({ onPostCreated }) => {
         onPostCreated();
       }
     } catch (err) {
-      console.error('Error creating post:', err);
       setError(
         err.response?.data?.detail || 
         'Failed to create post. Please try again.'

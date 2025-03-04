@@ -10,20 +10,18 @@ const setSecureToken = (name, token) => {
   if (!token) return;
   
   try {
-    // Parse the JWT to get the expiration
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(window.atob(base64));
     
-    // Store the token with its expiration time
     const tokenData = {
       token,
-      expires: payload.exp * 1000, // Convert to milliseconds
+      expires: payload.exp * 1000,
     };
     
     localStorage.setItem(name, JSON.stringify(tokenData));
   } catch (e) {
-    console.error('Error storing token:', e);
+    // Silently fail and don't store the token
   }
 };
 
@@ -41,7 +39,6 @@ const getSecureToken = (name) => {
     
     return tokenData.token;
   } catch (e) {
-    console.error('Error retrieving token:', e);
     localStorage.removeItem(name);
     return null;
   }
@@ -80,8 +77,6 @@ export const AuthProvider = ({ children }) => {
         const response = await UserService.getCurrentUser();
         setCurrentUser(response.data);
       } catch (error) {
-        console.error('Auth check failed:', error);
-        // Clear all auth data if token is invalid
         clearAuthData();
       } finally {
         setLoading(false);
@@ -93,25 +88,19 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     setError(null);
-    
-    // Always clear existing auth data before registration
     clearAuthData();
     
     try {
-      // Register new user
       const response = await AuthService.register(userData);
       const { access, refresh } = response.data;
       
-      // Save tokens securely
       setSecureToken('access_token', access);
       setSecureToken('refresh_token', refresh);
       
-      // Fetch current user data
       try {
         const userResponse = await UserService.getCurrentUser();
         setCurrentUser(userResponse.data);
       } catch (userError) {
-        console.error('Error fetching user data after registration:', userError);
         clearAuthData();
         throw new Error('Registration successful but unable to fetch user data');
       }
@@ -126,50 +115,26 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     setError(null);
-    
-    // Always clear existing auth data before login
     clearAuthData();
     
     try {
-      console.log('Attempting login with credentials:', { ...credentials, password: '***' });
-      
-      // Attempt login
       const response = await AuthService.login(credentials);
-      console.log('Login response:', response.data);
-      
       const { access, refresh } = response.data;
       
-      // Save tokens securely
       setSecureToken('access_token', access);
       setSecureToken('refresh_token', refresh);
       
-      console.log('Tokens saved securely');
-      
-      // Fetch current user data with a slight delay to ensure token is properly saved
       try {
-        // Small timeout to ensure token is available for the next request
         await new Promise(resolve => setTimeout(resolve, 100));
-        console.log('Fetching user data with token...');
-        
         const userResponse = await UserService.getCurrentUser();
-        console.log('User data received:', userResponse.data);
-        
         setCurrentUser(userResponse.data);
       } catch (userError) {
-        console.error('Error fetching user data after login:', userError);
-        console.error('Response from server:', userError.response?.data);
-        console.error('Request that failed:', userError.config);
-        
         clearAuthData();
         throw new Error('Login successful but unable to fetch user data');
       }
       
       return response.data;
     } catch (error) {
-      console.error('Login error:', error);
-      console.error('Response from server:', error.response?.data);
-      console.error('Request that failed:', error.config);
-      
       clearAuthData();
       setError(error.response?.data?.detail || 'Login failed. Please check your credentials.');
       throw error;

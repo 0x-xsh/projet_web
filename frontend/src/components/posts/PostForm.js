@@ -44,7 +44,6 @@ const PostForm = () => {
           setPost(response.data);
           setLoading(false);
         } catch (err) {
-          console.error('Error fetching post:', err);
           setError('Failed to load post. Please try again.');
           setLoading(false);
         }
@@ -67,7 +66,6 @@ const PostForm = () => {
       // Redirect to home page after successful submission
       navigate('/');
     } catch (err) {
-      console.error('Error saving post:', err);
       setError(
         err.response?.data?.detail || 
         `Failed to ${isEditMode ? 'update' : 'create'} post. Please try again.`

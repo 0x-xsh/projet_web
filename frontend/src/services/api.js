@@ -20,7 +20,6 @@ const getSecureToken = (name) => {
     
     return tokenData.token;
   } catch (e) {
-    console.error('Error retrieving token:', e);
     localStorage.removeItem(name);
     return null;
   }
@@ -63,36 +62,22 @@ const setupAuthInterceptors = (instance) => {
     (config) => {
       const token = getSecureToken('access_token');
       
-      console.log('Interceptor running for URL:', config.url);
-      console.log('Token available:', token ? 'Yes' : 'No');
-      
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('Authorization header added');
       } else {
-        // If no token is available, don't add Authorization header
         delete config.headers.Authorization;
-        console.log('No Authorization header added (no token available)');
       }
       return config;
     },
     (error) => {
-      console.error('Interceptor request error:', error);
       return Promise.reject(error);
     }
   );
   
-  // Add response interceptor for debugging
+  // Add response interceptor for error handling
   instance.interceptors.response.use(
-    (response) => {
-      console.log('API Response Success:', response.config.url);
-      return response;
-    },
-    (error) => {
-      console.error('API Response Error:', error.config?.url || 'Unknown URL');
-      console.error('Error details:', error.response?.data || error.message);
-      return Promise.reject(error);
-    }
+    (response) => response,
+    (error) => Promise.reject(error)
   );
 };
 

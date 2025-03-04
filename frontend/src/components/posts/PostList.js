@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   List, 
   Typography, 
@@ -9,9 +9,17 @@ import {
 import PostItem from './PostItem';
 import InfiniteScroll from 'react-infinite-scroll-component';
 
-const PostList = ({ posts = [], showAuthor = true, fetchMoreData, hasMore = false, forceAuthor = false }) => {
+const PostList = ({ posts = [], showAuthor = true, fetchMoreData, hasMore = false, forceAuthor = false, onPostsChange }) => {
   // If no fetchMoreData provided, we're showing a static list (like user's own posts)
   const isInfiniteScroll = !!fetchMoreData;
+
+  const handlePostDeleted = (deletedPostId) => {
+    if (onPostsChange) {
+      // Filter out the deleted post
+      const updatedPosts = posts.filter(post => post.id !== deletedPostId);
+      onPostsChange(updatedPosts);
+    }
+  };
 
   if (!posts || posts.length === 0) {
     return (
@@ -30,7 +38,8 @@ const PostList = ({ posts = [], showAuthor = true, fetchMoreData, hasMore = fals
           key={post.id} 
           post={post} 
           showAuthor={showAuthor} 
-          forceAuthor={forceAuthor} 
+          forceAuthor={forceAuthor}
+          onPostDeleted={handlePostDeleted}
         />
       ))}
     </List>
