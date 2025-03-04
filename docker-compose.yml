@@ -2,8 +2,6 @@ services:
   auth_service:
     build: 
       context: ./auth_service
-      args:
-        BUILDKIT_INLINE_CACHE: 0
     volumes:
       - ./auth_service:/app
     ports:
@@ -26,8 +24,6 @@ services:
   users_service:
     build: 
       context: ./users_service
-      args:
-        BUILDKIT_INLINE_CACHE: 0
     volumes:
       - ./users_service:/app
     ports:
@@ -51,8 +47,7 @@ services:
   posts_service:
     build: 
       context: ./posts_service
-      args:
-        BUILDKIT_INLINE_CACHE: 0
+
     volumes:
       - ./posts_service:/app
     ports:
