@@ -34,6 +34,7 @@ media
 # Kubernetes
 *.log
 kubectl
+istio/
 
 # Visual Studio Code
 .vscode/
@@ -43,6 +44,12 @@ kubectl
 .env
 .env.local
 .env.*.local
+.env.prod
+.env.dev
+.env.staging
+# Allow example env files
+!.env.example
+!.env.*.example
 
 # System files
 .DS_Store

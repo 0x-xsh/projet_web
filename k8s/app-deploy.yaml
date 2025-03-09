@@ -1,0 +1,296 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: app
+type: Opaque
+stringData:
+  # The actual values will be replaced by kubectl command with environment variables
+  AUTH_SECRET_KEY: "${AUTH_SECRET_KEY}"
+  USERS_SECRET_KEY: "${USERS_SECRET_KEY}"
+  POSTS_SECRET_KEY: "${POSTS_SECRET_KEY}"
+  JWT_SECRET_KEY: "${JWT_SECRET_KEY}"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+  namespace: app
+type: Opaque
+stringData:
+  DB_NAME: "${DB_NAME}"
+  DB_USER: "${DB_USER}"
+  DB_PASSWORD: "${DB_PASSWORD}"
+  DB_HOST: "${DB_HOST}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - image: projetwebacr.azurecr.io/auth-service:v2
+          imagePullPolicy: Always
+          name: auth
+          resources: {}
+          ports:
+            - containerPort: 9000
+          env:
+            - name: DEBUG
+              value: "0"
+            - name: SECURE_SSL_REDIRECT
+              value: "False"
+            - name: SECURE_HSTS_SECONDS
+              value: "0"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AUTH_SECRET_KEY
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET_KEY
+            - name: SQL_ENGINE
+              value: "django.db.backends.postgresql"
+            - name: SQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_NAME
+            - name: SQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_USER
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_PASSWORD
+            - name: SQL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_HOST
+            - name: SQL_PORT
+              value: "5432"
+            - name: USERS_SERVICE_URL
+              value: "http://users.app.svc.cluster.local:9002"
+            - name: DJANGO_ALLOWED_HOSTS
+              value: "localhost 127.0.0.1 [::1] auth.app.svc.cluster.local * auth projetweb.com *.projetweb.com"
+            - name: DATABASE_POOL_SIZE
+              value: "20"
+            - name: DATABASE_POOL_OVERFLOW
+              value: "10"
+            - name: DATABASE_POOL_RECYCLE
+              value: "300"
+      imagePullSecrets:
+        - name: acr-secret
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: users
+  template:
+    metadata:
+      labels:
+        app: users
+    spec:
+      containers:
+        - image: projetwebacr.azurecr.io/users-service:v1
+          imagePullPolicy: Always
+          name: users
+          resources: {}
+          ports:
+            - containerPort: 9002
+          env:
+            - name: DEBUG
+              value: "0"
+            - name: SECURE_SSL_REDIRECT
+              value: "False"
+            - name: SECURE_HSTS_SECONDS
+              value: "0"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: USERS_SECRET_KEY
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET_KEY
+            - name: SQL_ENGINE
+              value: "django.db.backends.postgresql"
+            - name: SQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_NAME
+            - name: SQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_USER
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_PASSWORD
+            - name: SQL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_HOST
+            - name: SQL_PORT
+              value: "5432"
+            - name: AUTH_SERVICE_URL
+              value: "http://auth.app.svc.cluster.local:9000"
+            - name: DJANGO_ALLOWED_HOSTS
+              value: "localhost 127.0.0.1 [::1] users.app.svc.cluster.local * users projetweb.com *.projetweb.com"
+            - name: DATABASE_POOL_SIZE
+              value: "20"
+            - name: DATABASE_POOL_OVERFLOW
+              value: "10"
+            - name: DATABASE_POOL_RECYCLE
+              value: "300"
+      imagePullSecrets:
+        - name: acr-secret
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posts
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: posts
+  template:
+    metadata:
+      labels:
+        app: posts
+    spec:
+      containers:
+        - image: projetwebacr.azurecr.io/posts-service:v1
+          imagePullPolicy: Always
+          name: posts
+          resources: {}
+          ports:
+            - containerPort: 9001
+          env:
+            - name: DEBUG
+              value: "0"
+            - name: SECURE_SSL_REDIRECT
+              value: "False"
+            - name: SECURE_HSTS_SECONDS
+              value: "0"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTS_SECRET_KEY
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET_KEY
+            - name: SQL_ENGINE
+              value: "django.db.backends.postgresql"
+            - name: SQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_NAME
+            - name: SQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_USER
+            - name: SQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_PASSWORD
+            - name: SQL_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DB_HOST
+            - name: SQL_PORT
+              value: "5432"
+            - name: AUTH_SERVICE_URL
+              value: "http://auth.app.svc.cluster.local:9000"
+            - name: USERS_SERVICE_URL
+              value: "http://users.app.svc.cluster.local:9002"
+            - name: DJANGO_ALLOWED_HOSTS
+              value: "localhost 127.0.0.1 [::1] posts.app.svc.cluster.local * posts projetweb.com *.projetweb.com"
+            - name: DATABASE_POOL_SIZE
+              value: "20"
+            - name: DATABASE_POOL_OVERFLOW
+              value: "10"
+            - name: DATABASE_POOL_RECYCLE
+              value: "300"
+      imagePullSecrets:
+        - name: acr-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  namespace: app
+spec:
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+  selector:
+    app: auth
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users
+  namespace: app
+spec:
+  ports:
+    - port: 9002
+      targetPort: 9002
+      protocol: TCP
+  selector:
+    app: users
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: posts
+  namespace: app
+spec:
+  ports:
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+  selector:
+    app: posts
+  type: ClusterIP 
