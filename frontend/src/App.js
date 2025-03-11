@@ -185,18 +185,18 @@ function App() {
           <Layout>
             <Routes>
               {/* Public Routes */}
-              <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
-              {/* Protected Routes */}
+              {/* Protected Routes - Everything else is protected */}
               <Route element={<PrivateRoute />}>
+                <Route path="/" element={<Home />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/posts/edit/:id" element={<PostForm />} />
+                
+                {/* Redirect any other unknown routes to home */}
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
-              
-              {/* Redirect for any other route */}
-              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
         </Router>

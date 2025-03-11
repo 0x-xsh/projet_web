@@ -1,9 +1,16 @@
 import axios from 'axios';
 
-// API base URLs
-const AUTH_API_URL = 'http://localhost:9000';
-const USERS_API_URL = 'http://localhost:9002';
-const POSTS_API_URL = 'http://localhost:9001';
+// Get the gateway IP from environment variables, or use default if not defined
+const GATEWAY_IP = process.env.REACT_APP_GATEWAY_IP || '74.178.207.4';
+const GATEWAY_PROTOCOL = process.env.REACT_APP_GATEWAY_PROTOCOL || 'https';
+const GATEWAY_URL = `${GATEWAY_PROTOCOL}://${GATEWAY_IP}.nip.io`;
+
+// API endpoints using the gateway URL
+const AUTH_API_URL = `${GATEWAY_URL}/auth`;
+const USERS_API_URL = `${GATEWAY_URL}/users`;
+const POSTS_API_URL = `${GATEWAY_URL}/posts`;
+
+
 
 // Secure token retrieval function
 const getSecureToken = (name) => {
@@ -66,6 +73,8 @@ const setupAuthInterceptors = (instance) => {
         config.headers.Authorization = `Bearer ${token}`;
       } else {
         delete config.headers.Authorization;
+        // If there's no token and we're trying to access a protected resource,
+        // we might want to redirect to login - but we'll handle this in the response interceptor
       }
       return config;
     },
@@ -77,7 +86,21 @@ const setupAuthInterceptors = (instance) => {
   // Add response interceptor for error handling
   instance.interceptors.response.use(
     (response) => response,
-    (error) => Promise.reject(error)
+    (error) => {
+      // Handle 401 Unauthorized errors
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        // Clear tokens from localStorage
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        
+        // Redirect to login page
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          console.error('Authentication error - redirecting to login');
+          window.location.href = '/login';
+        }
+      }
+      return Promise.reject(error);
+    }
   );
 };
 

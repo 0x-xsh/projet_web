@@ -5,6 +5,13 @@ const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
+// Helper function to check if a token is close to expiration (within 5 minutes)
+const isTokenExpiringSoon = (tokenData) => {
+  if (!tokenData) return true;
+  const fiveMinutesFromNow = Date.now() + 5 * 60 * 1000; // 5 minutes in milliseconds
+  return tokenData.expires <= fiveMinutesFromNow;
+};
+
 // Secure token storage with expiration handling
 const setSecureToken = (name, token) => {
   if (!token) return;
@@ -22,6 +29,7 @@ const setSecureToken = (name, token) => {
     localStorage.setItem(name, JSON.stringify(tokenData));
   } catch (e) {
     // Silently fail and don't store the token
+    console.error('Failed to store token:', e);
   }
 };
 
@@ -44,6 +52,14 @@ const getSecureToken = (name) => {
   }
 };
 
+const getTokenData = (name) => {
+  try {
+    return JSON.parse(localStorage.getItem(name));
+  } catch (e) {
+    return null;
+  }
+};
+
 const clearTokens = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
@@ -53,6 +69,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Clear stored auth data completely
   const clearAuthData = () => {
@@ -60,14 +77,57 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
   };
 
+  // Refresh token function
+  const refreshAccessToken = async () => {
+    try {
+      setRefreshing(true);
+      const refreshToken = getSecureToken('refresh_token');
+      
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+      
+      const response = await AuthService.refreshToken(refreshToken);
+      const { access, refresh } = response.data;
+      
+      setSecureToken('access_token', access);
+      if (refresh) {
+        setSecureToken('refresh_token', refresh);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      clearAuthData();
+      return false;
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Check if token needs refreshing
+  const checkAndRefreshToken = async () => {
+    const accessTokenData = getTokenData('access_token');
+    
+    if (!accessTokenData) return false;
+    
+    // If token is expiring soon, refresh it
+    if (isTokenExpiringSoon(accessTokenData)) {
+      console.log('Access token is expiring soon, refreshing...');
+      return await refreshAccessToken();
+    }
+    
+    return true;
+  };
+
   useEffect(() => {
     // Check if user is already logged in
     const checkAuthStatus = async () => {
       setLoading(true);
-      const token = getSecureToken('access_token');
+      const tokenValid = await checkAndRefreshToken();
       
-      if (!token) {
-        // No token found, user is not logged in
+      if (!tokenValid) {
+        // No valid token, user is not logged in
         setLoading(false);
         return;
       }
@@ -77,6 +137,7 @@ export const AuthProvider = ({ children }) => {
         const response = await UserService.getCurrentUser();
         setCurrentUser(response.data);
       } catch (error) {
+        console.error('Failed to fetch user data:', error);
         clearAuthData();
       } finally {
         setLoading(false);
@@ -84,6 +145,19 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuthStatus();
+
+    // Set up a token refresh interval
+    const tokenRefreshInterval = setInterval(() => {
+      const accessTokenData = getTokenData('access_token');
+      if (accessTokenData && isTokenExpiringSoon(accessTokenData)) {
+        console.log('Token refresh interval triggered');
+        refreshAccessToken();
+      }
+    }, 60000); // Check every minute
+
+    return () => {
+      clearInterval(tokenRefreshInterval);
+    };
   }, []);
 
   const register = async (userData) => {
@@ -148,6 +222,9 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (userData) => {
     setError(null);
     try {
+      // Make sure token is fresh before updating profile
+      await checkAndRefreshToken();
+      
       const response = await UserService.updateUser(userData);
       setCurrentUser(response.data);
       return response.data;
@@ -165,9 +242,11 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
+    refreshAccessToken,
+    isAuthenticated: !!currentUser && !!getSecureToken('access_token'),
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 };
 
 export default AuthContext; 

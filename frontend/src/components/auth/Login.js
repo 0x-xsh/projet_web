@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
 import {
@@ -23,15 +23,22 @@ const LoginSchema = Yup.object().shape({
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState('');
+  
+  // Get the redirect path from location state, or default to '/'
+  const from = location.state?.from || '/';
 
   const handleSubmit = async (values, { setSubmitting }) => {
     setError('');
     
     try {
       await login(values);
-      navigate('/');
+      console.log('Login successful, redirecting to:', from);
+      // Redirect to the page the user was trying to access before login
+      navigate(from, { replace: true });
     } catch (err) {
+      console.error('Login error:', err);
       setError(
         err.response?.data?.detail || 
         'Login failed. Please check your credentials.'
