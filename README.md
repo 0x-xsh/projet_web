@@ -265,37 +265,16 @@ Our Kubernetes deployment is configured for high availability and dynamic horizo
    - CPU utilization target of 70%
    - Memory utilization target of 80%
 
-   Example output:
-   ```
-   NAME       REFERENCE          TARGETS                        MINPODS   MAXPODS   REPLICAS   AGE
-   auth-hpa   Deployment/auth    67%/70%, 52%/80%              2         5         2          14h
-   users-hpa  Deployment/users   45%/70%, 30%/80%              2         5         2          14h
-   posts-hpa  Deployment/posts   72%/70%, 65%/80%              2         5         3          14h
-   ```
+   
 
-4. **Resource Requests and Limits**: All deployments have defined resource requests to enable effective HPA operation:
-   ```yaml
-   resources:
-     requests:
-       cpu: "100m"     # Request 0.1 CPU cores
-       memory: "128Mi" # Request 128MB memory
-     limits:
-       cpu: "500m"     # Limit to 0.5 CPU cores
-       memory: "512Mi" # Limit to 512MB memory
-   ```
-
-5. **Gradual Scaling Behavior**: We've configured stabilization windows to prevent thrashing:
-   - Scale down: 300-second stabilization window to prevent premature scale-down
-   - Scale up: 60-second stabilization window for quicker response to traffic spikes
-
-6. **Implementation Files**: The HPA configurations are stored in version control:
+5. **Implementation Files**: The HPA configurations are stored in version control:
    - `k8s/auth-hpa.yaml`
    - `k8s/users-hpa.yaml`
    - `k8s/posts-hpa.yaml`
 
 This autoscaling approach ensures optimal resource utilization and automatically adjusts capacity based on actual workload patterns, improving both cost efficiency and performance.
 
-7. **Manual Scaling (if needed)**: You can still manually scale services in exceptional circumstances:
+6. **Manual Scaling (if needed)**: You can still manually scale services in exceptional circumstances:
    ```bash
    # Scale up auth service to 3 replicas
    kubectl scale deployment auth -n app --replicas=3
