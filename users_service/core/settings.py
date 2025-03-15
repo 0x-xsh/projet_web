@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.SecurityHeadersMiddleware',  # Add custom security headers
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -169,13 +170,13 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# CORS settings
+# CORS settings - only needed for internal services and gateway
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://ingress-nginx-controller.ingress-nginx.svc.cluster.local",
+    "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local",
 ]
 
-# Additional CORS settings for security
+# The gateway handles external CORS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     'GET',

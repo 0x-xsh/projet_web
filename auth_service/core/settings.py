@@ -171,13 +171,13 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# CORS settings
+# CORS settings - only needed for internal services and gateway
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://ingress-nginx-controller.ingress-nginx.svc.cluster.local",
+    "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local",
 ]
 
-# Additional CORS settings for security
+# The gateway handles external CORS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     'GET',
@@ -194,3 +194,11 @@ CORS_ALLOW_HEADERS = [
 
 # Users service URL
 USERS_SERVICE_URL = os.environ.get('USERS_SERVICE_URL', 'http://users_service:8000')
+
+# Security settings
+SECURE_SSL_REDIRECT = False  # Disable SSL redirect
+SECURE_HSTS_SECONDS = 0  # Disable HSTS
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+SESSION_COOKIE_SECURE = False  # Allow cookies over HTTP
+CSRF_COOKIE_SECURE = False  # Allow CSRF over HTTP

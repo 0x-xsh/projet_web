@@ -73,6 +73,7 @@ The application consists of three core microservices:
 3. **Posts Service** - Handles posts, comments, and social interactions
 
 Each service is containerized and deployed independently with multiple replicas on Azure Kubernetes Service for high availability and horizontal scaling.
+Each service handles its security on its own becuase i apply the ZERO-TRUST policy, so each one handles the recevied request's jwt before proceeding.
 
 ## API Endpoints Reference
 
@@ -259,22 +260,14 @@ Our Kubernetes deployment is configured for high availability and dynamic horizo
    kubectl get hpa -n app
    ```
 
-3. **HPA Configuration**: Each service uses the following scaling parameters:
-   - Minimum 2 replicas to maintain high availability
-   - Maximum 5 replicas to handle traffic spikes
-   - CPU utilization target of 70%
-   - Memory utilization target of 80%
-
-   
-
-5. **Implementation Files**: The HPA configurations are stored in version control:
+3. **Implementation Files**: The HPA configurations are stored in version control:
    - `k8s/auth-hpa.yaml`
    - `k8s/users-hpa.yaml`
    - `k8s/posts-hpa.yaml`
 
 This autoscaling approach ensures optimal resource utilization and automatically adjusts capacity based on actual workload patterns, improving both cost efficiency and performance.
 
-6. **Manual Scaling (if needed)**: You can still manually scale services in exceptional circumstances:
+5. **Manual Scaling (if needed)**: You can still manually scale services in exceptional circumstances:
    ```bash
    # Scale up auth service to 3 replicas
    kubectl scale deployment auth -n app --replicas=3
@@ -283,7 +276,7 @@ This autoscaling approach ensures optimal resource utilization and automatically
    kubectl get pods -n app
    ```
 
-### Setting Up NGINX Ingress Controller
+### Setting Up NGINX Ingress Gateway
 
 1. **Add the NGINX Ingress Controller Helm repository**:
    ```bash
@@ -305,12 +298,6 @@ This autoscaling approach ensures optimal resource utilization and automatically
    ```bash
    kubectl get service nginx-ingress-ingress-nginx-controller -n ingress-nginx
    ```
-   
-   Example output:
-   ```
-   NAME                                     TYPE           CLUSTER-IP    EXTERNAL-IP     PORT(S)                      AGE
-   nginx-ingress-ingress-nginx-controller   LoadBalancer   10.0.73.155   74.178.207.4    80:30222/TCP,443:32607/TCP   12h
-   ```
 
 4. **Apply the Ingress configuration**:
    ```bash
@@ -320,27 +307,6 @@ This autoscaling approach ensures optimal resource utilization and automatically
 ### DNS Configuration (with nip.io)
 
 We initially tried to configure a custom domain in Azure, but encountered DNS propagation delays. As a quick alternative, we chose to use nip.io which allows us to create DNS entries that resolve to specific IP addresses without DNS configuration.
-
-1. **Get the external IP of your Ingress Controller**:
-   ```bash
-   EXTERNAL_IP=$(kubectl get service nginx-ingress-ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-   echo $EXTERNAL_IP
-   ```
-
-2. **Using nip.io for quick DNS resolution**:
-   The format is: <ip-address>.nip.io
-   
-   For example, with the IP address 74.178.207.4, we used:
-   ```
-   74.178.207.4.nip.io
-   ```
-
-3. **Update Ingress configuration to use nip.io**:
-   ```bash
-   # Example of manually editing app-ingress.yaml to use:
-   # - host: 74.178.207.4.nip.io
-   kubectl apply -f k8s/app-ingress.yaml
-   ```
 
 The nip.io service automatically maps any subdomain of nip.io to the corresponding IP address, making it perfect for testing without DNS configuration.
 
@@ -408,148 +374,3 @@ The nip.io service automatically maps any subdomain of nip.io to the correspondi
    ```bash
    curl -v https://74.178.207.4.nip.io/auth/health/
    ```
-
-### Troubleshooting Tips
-
-If you encounter issues during the deployment process:
-
-1. **Check pod status and logs**:
-   ```bash
-   kubectl get pods -n app
-   kubectl describe pod <pod-name> -n app
-   kubectl logs <pod-name> -n app
-   ```
-
-2. **Check Ingress status**:
-   ```bash
-   kubectl get ingress -n app
-   kubectl describe ingress api-ingress -n app
-   ```
-
-3. **Check certificate status**:
-   ```bash
-   kubectl get certificate -n app
-   kubectl describe certificate api-tls-cert -n app
-   ```
-
-4. **Verify connectivity between services**:
-   ```bash
-   # Use a temporary pod to test connectivity
-   kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- sh
-   # Then from inside the pod
-   curl http://auth.app.svc.cluster.local:9000/auth/health/
-   ```
-
-### Database Migrations
-
-Migrations are handled directly in the Dockerfile's CMD instruction, NOT through a separate entrypoint script as previously mentioned. The actual implementation is:
-
-```dockerfile
-# In each service's Dockerfile:
-CMD bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:9000"
-```
-
-This means:
-1. Every time a container starts, it runs migrations first
-2. Only after migrations complete successfully does the service start
-3. Services must be started in sequence due to database dependencies:
-
-```
-# Service startup MUST follow this order
-1. Auth Service first → Base tables and authentication models
-2. Users Service second → Depends on Auth tables 
-3. Posts Service last → Depends on both Auth and Users tables
-```
-
-The Docker Compose file enforces this dependency order with:
-```yaml
-users_service:
-  # ...
-  depends_on:
-    - db
-    - auth_service
-
-posts_service:
-  # ...
-  depends_on:
-    - db
-    - auth_service
-    - users_service
-```
-
-If you need to manually trigger migrations (after schema changes), use:
-```bash
-# Auth Service migrations
-kubectl exec -it $(kubectl get pods -n app -l app=auth -o jsonpath='{.items[0].metadata.name}') -n app -- python manage.py migrate
-
-# Users Service migrations (after auth completes)
-kubectl exec -it $(kubectl get pods -n app -l app=users -o jsonpath='{.items[0].metadata.name}') -n app -- python manage.py migrate
-
-# Posts Service migrations (after both auth and users complete)
-kubectl exec -it $(kubectl get pods -n app -l app=posts -o jsonpath='{.items[0].metadata.name}') -n app -- python manage.py migrate
-```
-
-This migration sequence is critical - running them out of order will cause database reference errors.
-
-## Security Features
-
-The application implements several security features, including:
-
-1. **Authentication**: Users must log in to access the application.
-2. **Authorization**: Users can only access resources they are authorized to access.
-3. **Data Encryption**: All data is encrypted in transit and at rest.
-4. **Rate Limiting**: To prevent abuse, the application implements rate limiting for certain endpoints.
-5. **Auditing**: All actions are logged for auditing purposes.
-
-### Zero Trust Architecture
-
-The application follows a Zero Trust security model where no service or user is trusted by default, regardless of their location within the network. Key implementation details include:
-
-1. **Independent JWT Validation**: Each microservice validates JWT tokens independently rather than relying on a gateway or another service's validation. This ensures that:
-   - If one service is compromised, it doesn't automatically grant access to other services
-   - There's no single point of failure in the authentication chain
-   - Each service can implement specific authorization policies
-
-2. **Shared JWT Secret Management**: 
-   - The JWT secret key is stored in Azure Key Vault for secure management
-   - Each service retrieves the secret at runtime from the vault
-   - The secret is injected into the Kubernetes environment through:
-     ```yaml
-     env:
-       - name: JWT_SECRET_KEY
-         valueFrom:
-           secretKeyRef:
-             name: app-secrets
-             key: JWT_SECRET_KEY
-     ```
-
-3. **Token Validation Process**:
-   - Each request containing a JWT is verified with the shared secret
-   - Tokens are checked for expiration, issuer validity, and signature integrity
-   - Services verify specific claims relevant to their domain
-   - Failed validation immediately rejects the request, regardless of source
-
-This approach ensures that even if traffic reaches a service through internal networking, it still requires proper authentication and authorization before any data access is permitted.
-
-## Local Development
-
-The application can be run locally using Docker Compose. To do this, follow these steps:
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/yourusername/microservices-social-media-app.git
-   cd microservices-social-media-app
-   ```
-
-2. **Build Docker images**:
-   ```bash
-   docker-compose build
-   ```
-
-3. **Run Docker Compose**:
-   ```bash
-   docker-compose up
-   ```
-
-This will start all the services locally.
-

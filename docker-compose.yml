@@ -6,18 +6,10 @@ services:
       - ./auth_service:/app
     ports:
       - "9000:9000"
+    env_file:
+      - ./auth_service/.env
     environment:
-      - DEBUG=1
-      - SECRET_KEY=django-insecure-auth-service-7y_z@(1wz*@bpj=m*_z3u*u2e9h82t*5d@e6k6^s1b6m
-      - JWT_SECRET_KEY=secure-jwt-secret-key-for-auth-tokens-7y_z@(1wz*@bpj=m*_z3u*u2e9h82t*5d
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] auth_service *
-      - SQL_ENGINE=django.db.backends.postgresql
-      - SQL_DATABASE=microservices_db
-      - SQL_USER=postgres
-      - SQL_PASSWORD=postgres
-      - SQL_HOST=db
-      - SQL_PORT=5432
-      - USERS_SERVICE_URL=http://users_service:8000
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] auth_service 
     depends_on:
       - db
 
@@ -28,18 +20,10 @@ services:
       - ./users_service:/app
     ports:
       - "9002:9002"
+    env_file:
+      - ./users_service/.env
     environment:
-      - DEBUG=1
-      - SECRET_KEY=django-insecure-h0m%rz_qg@mj+^)_vxh3zp=wq+=4$$%rl-4n!b9u4^f8=r@u)2k
-      - JWT_SECRET_KEY=secure-jwt-secret-key-for-auth-tokens-7y_z@(1wz*@bpj=m*_z3u*u2e9h82t*5d
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] users_service *
-      - SQL_ENGINE=django.db.backends.postgresql
-      - SQL_DATABASE=microservices_db
-      - SQL_USER=postgres
-      - SQL_PASSWORD=postgres
-      - SQL_HOST=db
-      - SQL_PORT=5432
-      - AUTH_SERVICE_URL=http://auth_service:9000
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] users_service 
     depends_on:
       - db
       - auth_service
@@ -47,24 +31,14 @@ services:
   posts_service:
     build: 
       context: ./posts_service
-
     volumes:
       - ./posts_service:/app
     ports:
       - "9001:9001"
+    env_file:
+      - ./posts_service/.env
     environment:
-      - DEBUG=1
-      - SECRET_KEY=django-insecure-h0m%rz_qg@mj+^)_vxh3zp=wq+=4$$%rl-4n!b9u4^f8=r@u)2k
-      - JWT_SECRET_KEY=secure-jwt-secret-key-for-auth-tokens-7y_z@(1wz*@bpj=m*_z3u*u2e9h82t*5d
-      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] posts_service *
-      - SQL_ENGINE=django.db.backends.postgresql
-      - SQL_DATABASE=microservices_db
-      - SQL_USER=postgres
-      - SQL_PASSWORD=postgres
-      - SQL_HOST=db
-      - SQL_PORT=5432
-      - AUTH_SERVICE_URL=http://auth_service:9000
-      - USERS_SERVICE_URL=http://users_service:9002
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] posts_service 
     depends_on:
       - db
       - auth_service

@@ -29,7 +29,7 @@ metadata:
   name: auth
   namespace: app
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: auth
@@ -105,7 +105,7 @@ metadata:
   name: users
   namespace: app
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: users
@@ -181,7 +181,7 @@ metadata:
   name: posts
   namespace: app
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: posts
