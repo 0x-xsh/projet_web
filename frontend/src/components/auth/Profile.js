@@ -10,12 +10,18 @@ import {
   Tabs,
   Tab,
   CircularProgress,
-  Divider
+  Divider,
+  Stack,
+  Chip
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import { PostService } from '../../services/api';
 import PostList from '../posts/PostList';
 import QuickPostForm from '../posts/QuickPostForm';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CreateIcon from '@mui/icons-material/Create';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import CommentIcon from '@mui/icons-material/Comment';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -34,6 +40,11 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [view, setView] = useState('posts');
+  const [stats, setStats] = useState({
+    totalPosts: 0,
+    totalLikes: 0,
+    lastActive: null
+  });
 
   useEffect(() => {
     if (currentUser) {
@@ -45,12 +56,40 @@ const Profile = () => {
     try {
       setLoading(true);
       const response = await PostService.getPostsByUser(currentUser.id);
-      setUserPosts(response.data.results || []);
+      const posts = response.data.results || [];
+      setUserPosts(posts);
+      
+      // Calculate stats
+      calculateStats(posts);
     } catch (err) {
       setError('Failed to load posts');
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateStats = (posts) => {
+    // Total posts
+    const totalPosts = posts.length;
+    
+    // Total likes received
+    const totalLikes = posts.reduce((sum, post) => sum + (post.like_count || 0), 0);
+    
+    // Last active (most recent post date)
+    let lastActive = null;
+    if (posts.length > 0) {
+      // Find the most recent post
+      const sortedPosts = [...posts].sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      lastActive = sortedPosts[0].created_at;
+    }
+    
+    setStats({
+      totalPosts,
+      totalLikes,
+      lastActive
+    });
   };
 
   const handlePostCreated = async () => {
@@ -106,6 +145,14 @@ const Profile = () => {
             <Typography variant="h4" gutterBottom>
               {currentUser.username}
             </Typography>
+            {stats.lastActive && (
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                <AccessTimeIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                <Typography variant="body2" color="text.secondary">
+                  Last active: {formatDate(stats.lastActive)}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
       </Box>
@@ -132,6 +179,40 @@ const Profile = () => {
               <Typography variant="body2" color="text.secondary">
                 Member since {formatDate(currentUser?.date_joined)}
               </Typography>
+            </Paper>
+            
+            {/* Quick Stats Cards */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Activity Stats
+              </Typography>
+              <Stack spacing={2} mt={2}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <CreateIcon sx={{ mr: 1, color: 'primary.main' }} />
+                    <Typography variant="body2">Posts</Typography>
+                  </Box>
+                  <Chip 
+                    label={stats.totalPosts} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined" 
+                  />
+                </Box>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <ThumbUpIcon sx={{ mr: 1, color: 'primary.main' }} />
+                    <Typography variant="body2">Likes Received</Typography>
+                  </Box>
+                  <Chip 
+                    label={stats.totalLikes} 
+                    size="small" 
+                    color="primary" 
+                    variant="outlined" 
+                  />
+                </Box>
+              </Stack>
             </Paper>
           </Grid>
 
