@@ -6,26 +6,18 @@ import {
   Paper,
   CircularProgress,
   Typography,
-  IconButton,
   TextField,
   InputAdornment,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
-  Chip,
-  Divider
+  Chip
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { PostService } from '../services/api';
 import PostList from './posts/PostList';
 import QuickPostForm from './posts/QuickPostForm';
 import {
-  FilterList as FilterIcon,
   Close as CloseIcon,
-  Search as SearchIcon,
-  Add as AddIcon
+  Search as SearchIcon
 } from '@mui/icons-material';
 
 const COOKIE_EXPIRATION = 30; // days
@@ -69,12 +61,10 @@ const Home = () => {
   const initialFilters = loadFiltersFromCookies();
   
   // Filter states
-  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [includeWords, setIncludeWords] = useState(initialFilters.includeWords);
   const [excludeWords, setExcludeWords] = useState(initialFilters.excludeWords);
   const [currentIncludeWord, setCurrentIncludeWord] = useState('');
   const [currentExcludeWord, setCurrentExcludeWord] = useState('');
-  const [searchActive, setSearchActive] = useState(false);
   const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm);
   const [caseSensitive, setCaseSensitive] = useState(initialFilters.caseSensitive);
   const [filteredPosts, setFilteredPosts] = useState([]);
@@ -197,9 +187,40 @@ const Home = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Grid container spacing={3}>
-        {/* Left Sidebar */}
+        {/* Main Content */}
+        <Grid item xs={12} md={9}>
+          {currentUser && (
+            <QuickPostForm onPostCreated={handlePostCreated} />
+          )}
+
+          {error && (
+            <Paper sx={{ p: 2, mb: 3, bgcolor: 'error.light', color: 'error.contrastText' }}>
+              <Typography>{error}</Typography>
+            </Paper>
+          )}
+
+          {loading && posts.length === 0 ? (
+            <Box display="flex" justifyContent="center" my={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <PostList
+              posts={filteredPosts.length > 0 || searchTerm || includeWords.length > 0 || excludeWords.length > 0 ? filteredPosts : posts}
+              fetchMoreData={fetchMoreData}
+              hasMore={hasMore}
+              showAuthor={true}
+              onPostsChange={(updatedPosts) => {
+                setPosts(updatedPosts);
+                applyFilters(updatedPosts);
+              }}
+            />
+          )}
+        </Grid>
+
+        {/* Right Sidebar */}
         <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, position: 'sticky', top: '80px' }}>
+          {/* Filters */}
+          <Paper sx={{ p: 2, position: 'sticky', top: '80px', mb: 3 }}>
             <Typography variant="h6" gutterBottom>
               Filters
             </Typography>
@@ -261,41 +282,9 @@ const Home = () => {
               )}
             </Box>
           </Paper>
-        </Grid>
 
-        {/* Main Content */}
-        <Grid item xs={12} md={6}>
-          {currentUser && (
-            <QuickPostForm onPostCreated={handlePostCreated} />
-          )}
-
-          {error && (
-            <Paper sx={{ p: 2, mb: 3, bgcolor: 'error.light', color: 'error.contrastText' }}>
-              <Typography>{error}</Typography>
-            </Paper>
-          )}
-
-          {loading && posts.length === 0 ? (
-            <Box display="flex" justifyContent="center" my={4}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <PostList
-              posts={filteredPosts.length > 0 || searchTerm || includeWords.length > 0 || excludeWords.length > 0 ? filteredPosts : posts}
-              fetchMoreData={fetchMoreData}
-              hasMore={hasMore}
-              showAuthor={true}
-              onPostsChange={(updatedPosts) => {
-                setPosts(updatedPosts);
-                applyFilters(updatedPosts);
-              }}
-            />
-          )}
-        </Grid>
-
-        {/* Right Sidebar */}
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, position: 'sticky', top: '80px' }}>
+          {/* Advanced Filters */}
+          <Paper sx={{ p: 2, position: 'sticky', top: '350px' }}>
             <Typography variant="h6" gutterBottom>
               Advanced Filters
             </Typography>

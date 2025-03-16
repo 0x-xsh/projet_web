@@ -35,8 +35,6 @@ import {
   ExpandMore, 
   Delete,
   Send,
-  BookmarkBorderOutlined,
-  ShareOutlined,
   WarningAmber
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
@@ -71,7 +69,6 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
   const [authorLoading, setAuthorLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [commentError, setCommentError] = useState('');
-  const [error, setError] = useState('');
   
   // Determine if current user is the author immediately - more direct comparison
   // This adds a more explicit check based on IDs only
@@ -83,6 +80,7 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
   // Fetch author data if needed
   useEffect(() => {
     const fetchAuthorData = async () => {
+      setAuthorLoading(true);
       try {
         const response = await UserService.getUserById(post.author);
         setAuthorData(response.data);
@@ -95,6 +93,8 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
         } catch (retryErr) {
           setAuthorData(null);
         }
+      } finally {
+        setAuthorLoading(false);
       }
     };
 
@@ -153,11 +153,14 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
   };
 
   const fetchComments = async () => {
+    setLoadingComments(true);
     try {
       const response = await PostService.getPostComments(post.id);
       setComments(response.data);
     } catch (err) {
-      setError('Failed to load comments');
+      setCommentError('Failed to load comments');
+    } finally {
+      setLoadingComments(false);
     }
   };
 
@@ -171,7 +174,7 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
       setComment('');
       await fetchComments();
     } catch (err) {
-      setError('Failed to add comment');
+      setCommentError('Failed to add comment');
     }
   };
 
@@ -180,7 +183,7 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
       await PostService.deleteComment(post.id, commentId);
       await fetchComments();
     } catch (err) {
-      setError('Failed to delete comment');
+      setCommentError('Failed to delete comment');
     }
   };
 
@@ -191,7 +194,7 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
         onPostDeleted(post.id);
       }
     } catch (err) {
-      setError('Failed to delete post');
+      setCommentError('Failed to delete post');
     }
   };
   
@@ -377,18 +380,6 @@ const PostItem = ({ post, showAuthor = true, forceAuthor = false, onPostDeleted 
                 >
                   <Comment />
                 </Badge>
-              </IconButton>
-            </Tooltip>
-            
-            <Tooltip title="Save">
-              <IconButton aria-label="save">
-                <BookmarkBorderOutlined />
-              </IconButton>
-            </Tooltip>
-            
-            <Tooltip title="Share">
-              <IconButton aria-label="share">
-                <ShareOutlined />
               </IconButton>
             </Tooltip>
             
