@@ -16,7 +16,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PostService } from '../../services/api';
 import PostList from '../posts/PostList';
 import QuickPostForm from '../posts/QuickPostForm';
-import EditIcon from '@mui/icons-material/Edit';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -108,13 +107,6 @@ const Profile = () => {
               {currentUser.username}
             </Typography>
           </Box>
-          <Button
-            variant="outlined"
-            startIcon={<EditIcon />}
-            sx={{ mt: 1 }}
-          >
-            Edit Profile
-          </Button>
         </Box>
       </Box>
 
