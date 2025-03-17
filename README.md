@@ -146,10 +146,10 @@ This section provides detailed examples of request bodies and responses for each
 
 ### Auth Service
 
-**Base URL**: `https://74.178.207.4.nip.io/auth/`
+**Base URL**: `https://myproject-api.westeurope.cloudapp.azure.com/auth/`
 
 #### Register
-- **URL**: `https://74.178.207.4.nip.io/auth/register/`
+- **URL**: `https://myproject-api.westeurope.cloudapp.azure.com/auth/register/`
 - **Method**: POST
 - **Example Request Body**:
 ```json
@@ -158,9 +158,10 @@ This section provides detailed examples of request bodies and responses for each
   "email": "newuser@example.com",
   "password": "SecurePass123!"
 }
+```
 
 #### Login
-- **URL**: `https://74.178.207.4.nip.io/auth/login/`
+- **URL**: `https://myproject-api.westeurope.cloudapp.azure.com/auth/login/`
 - **Method**: POST
 - **Example Request Body**:
 ```json
@@ -170,15 +171,12 @@ This section provides detailed examples of request bodies and responses for each
 }
 ```
 
-```
-
-
 ### Users Service
 
-**Base URL**: `https://74.178.207.4.nip.io/users/`
+**Base URL**: `https://myproject-api.westeurope.cloudapp.azure.com/users/`
 
 #### Get Current User
-- **URL**: `https://74.178.207.4.nip.io/users/api/users/me/`
+- **URL**: `https://myproject-api.westeurope.cloudapp.azure.com/users/api/users/me/`
 - **Method**: GET
 - **Headers**: `Authorization: Bearer your-access-token`
 - **Example Response**:
@@ -194,7 +192,7 @@ This section provides detailed examples of request bodies and responses for each
 ```
 
 #### Update User
-- **URL**: `https://74.178.207.4.nip.io/users/api/users/me/`
+- **URL**: `https://myproject-api.westeurope.cloudapp.azure.com/users/api/users/me/`
 - **Method**: PUT
 - **Headers**: `Authorization: Bearer your-access-token`
 - **Example Request Body**:
@@ -209,10 +207,10 @@ This section provides detailed examples of request bodies and responses for each
 
 ### Posts Service
 
-**Base URL**: `https://74.178.207.4.nip.io/posts/`
+**Base URL**: `https://myproject-api.westeurope.cloudapp.azure.com/posts/`
 
 #### Create Post
-- **URL**: `https://74.178.207.4.nip.io/posts/api/posts/`
+- **URL**: `https://myproject-api.westeurope.cloudapp.azure.com/posts/api/posts/`
 - **Method**: POST
 - **Headers**: `Authorization: Bearer your-access-token`
 - **Example Request Body**:
@@ -224,7 +222,7 @@ This section provides detailed examples of request bodies and responses for each
 ```
 
 #### Add Comment
-- **URL**: `https://74.178.207.4.nip.io/posts/api/posts/42/comment/`
+- **URL**: `https://myproject-api.westeurope.cloudapp.azure.com/posts/api/posts/42/comment/`
 - **Method**: POST
 - **Headers**: `Authorization: Bearer your-access-token`
 - **Example Request Body**:
@@ -424,11 +422,18 @@ My Kubernetes deployment is configured for high availability and dynamic horizon
    kubectl apply -f k8s/app-ingress.yaml
    ```
 
-### DNS Configuration (with nip.io)
+### DNS Configuration with Azure DNS
 
-I initially tried to configure a custom domain in Azure, but encountered DNS propagation delays. As a quick alternative, I chose to use nip.io which allows me to create DNS entries that resolve to specific IP addresses without DNS configuration.
+The application is now accessible through a properly configured Azure DNS domain name instead of using nip.io:
 
-The nip.io service automatically maps any subdomain of nip.io to the corresponding IP address, making it perfect for testing without DNS configuration.
+1. **Azure DNS Name**: The application is hosted at `myproject-api.westeurope.cloudapp.azure.com`
+2. **Public IP**: Associated with a dedicated public IP in Azure
+3. **HTTPS Enabled**: Secure HTTPS access with a valid Let's Encrypt certificate
+
+Benefits over the previous nip.io approach:
+- Professional domain name
+- Improved security with trusted certificates
+- Better performance and reliability
 
 ### Implementing HTTPS with Let's Encrypt and cert-manager
 
@@ -448,28 +453,28 @@ The nip.io service automatically maps any subdomain of nip.io to the correspondi
    kubectl get pods -n cert-manager
    ```
 
-3. **Create a ClusterIssuer for Let's Encrypt**:
+3. **Create a ClusterIssuer for Let's Encrypt Production**:
    ```bash
    kubectl apply -f k8s/cert-issuer.yaml
    ```
 
 4. **Verify the ClusterIssuer is ready**:
    ```bash
-   kubectl get clusterissuer letsencrypt -o wide
+   kubectl get clusterissuer letsencrypt-prod -o wide
    ```
 
-5. **Update the Ingress to use TLS and the Let's Encrypt ClusterIssuer**:
+5. **Update the Ingress to use TLS and the Let's Encrypt Production ClusterIssuer**:
    ```yaml
    # Update app-ingress.yaml to include:
    annotations:
-     cert-manager.io/cluster-issuer: "letsencrypt"
+     cert-manager.io/cluster-issuer: "letsencrypt-prod"
      nginx.ingress.kubernetes.io/ssl-redirect: "true"
    
    spec:
      tls:
      - hosts:
-       - 74.178.207.4.nip.io
-       secretName: api-tls-cert
+       - myproject-api.westeurope.cloudapp.azure.com
+       secretName: api-tls-cert-prod
    ```
 
 6. **Apply the updated Ingress configuration**:
@@ -481,7 +486,7 @@ The nip.io service automatically maps any subdomain of nip.io to the correspondi
    ```bash
    kubectl get certificate -n app
    kubectl get certificaterequest -n app
-   kubectl describe certificate api-tls-cert -n app
+   kubectl describe certificate api-tls-cert-prod -n app
    ```
 
 8. **Check certificate orders and challenges**:
@@ -509,6 +514,10 @@ The application implements a defense-in-depth approach to network security:
 1. **Gateway-Only Exposure**: Only the NGINX Ingress Gateway is exposed externally, with all microservices unreachable from outside the cluster
 2. **Network Policies**: Strict network policies control which services can communicate with each other
 3. **HTTPS Everywhere**: All external traffic is encrypted using HTTPS with Let's Encrypt certificates
+4. **Cross-Origin Resource Sharing (CORS)**: Strict CORS policies have been implemented to ensure that only approved origins can access the API:
+   - The frontend applications hosted on Vercel (`https://projet-web-amber.vercel.app`)
+   - Local development environments (`http://localhost:3000`)
+   - The API domain itself (`https://myproject-api.westeurope.cloudapp.azure.com`)
 
 ### Zero-Trust Architecture
 
