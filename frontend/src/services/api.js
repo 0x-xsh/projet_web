@@ -1,9 +1,9 @@
 import axios from 'axios';
 
 // Get the gateway IP from environment variables, or use default if not defined
-const GATEWAY_IP = process.env.REACT_APP_GATEWAY_IP || '74.178.207.4';
+const GATEWAY_IP = process.env.REACT_APP_GATEWAY_IP || 'myproject-api.westeurope.cloudapp.azure.com';
 const GATEWAY_PROTOCOL = process.env.REACT_APP_GATEWAY_PROTOCOL || 'https';
-const GATEWAY_URL = `${GATEWAY_PROTOCOL}://${GATEWAY_IP}.nip.io`;
+const GATEWAY_URL = `${GATEWAY_PROTOCOL}://${GATEWAY_IP}`;
 
 // API endpoints using the gateway URL
 const AUTH_API_URL = `${GATEWAY_URL}/auth`;
