@@ -103,12 +103,7 @@ const Login = () => {
               >
                 Sign In
               </Button>
-              <Grid container>
-                <Grid item xs>
-                  <Link component={RouterLink} to="#" variant="body2">
-                    Forgot password?
-                  </Link>
-                </Grid>
+              <Grid container justifyContent="flex-end">
                 <Grid item>
                   <Link component={RouterLink} to="/register" variant="body2">
                     {"Don't have an account? Sign Up"}
